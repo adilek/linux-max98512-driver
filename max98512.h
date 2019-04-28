@@ -12,7 +12,6 @@
 
 #ifndef _MAX98512_H
 #define _MAX98512_H
-#include <sound/maxim_dsm.h>
 
 #define MAX98512  0
 #define MAX98512L 0
@@ -492,11 +491,7 @@ enum one_stop_mode {
 	MAX98512_OSM_MAX,
 };
 
-#ifdef CONFIG_SND_SOC_MAXIM_DSM_CAL
-extern struct class *g_class;
-#else
 struct class *g_class;
-#endif /* CONFIG_SND_SOC_MAXIM_DSM_CAL */
 
 struct max98512_volume_step_info {
 	int length;
@@ -512,11 +507,15 @@ struct max98512_pc_active {
 };
 
 
-#ifdef CONFIG_SND_SOC_MAXIM_DSM
-#define MAX98512_PINFO_SZ	PARAM_OFFSET_MAX
-#else
 #define MAX98512_PINFO_SZ	6
-#endif /* CONFIG_SND_SOC_MAXIM_DSM */
+
+enum maxdsm_offset_ppr {
+	PARAM_OFFSET_PPR_TARGET_TEMP,
+	PARAM_OFFSET_PPR_TARGET_TEMP_R,
+	PARAM_OFFSET_PPR_EXIT_TEMP,
+	PARAM_OFFSET_PPR_EXIT_TEMP_R,
+	PARAM_OFFSET_PPR_MAX,
+};
 
 struct max98512_pdata {
 	uint32_t pinfo[MAX98512_PINFO_SZ];
@@ -536,14 +535,11 @@ struct max98512_priv {
 	struct regmap *regmap_l;
 	struct regmap *regmap_r;
 	struct regmap *regmap;
-	struct snd_soc_codec *codec;
+	//struct snd_soc_codec *codec;
+	struct snd_soc_component *component;
 	struct max98512_pdata *pdata;
 	struct max98512_pc_active pca;
 	struct max98512_volume_step_info vstep;
-#if defined(USE_DSM_LOG) || defined(USE_DSM_UPDATE_CAL)
-	struct class *class;
-	struct device *dev;
-#endif /* USE_DSM_LOG */
 	unsigned int spk_gain;
 	unsigned int spk_gain_rcv;
 	unsigned int spk_gain_left;

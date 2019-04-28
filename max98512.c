@@ -23,11 +23,6 @@
 #include <linux/of_gpio.h>
 #include <sound/tlv.h>
 #include "max98512.h"
-#ifdef CONFIG_SND_SOC_MAXIM_DSM
-#include <sound/maxim_dsm_cal.h>
-#include <sound/maxim_dsm.h>
-#include <sound/maxim_dsm_power.h>
-#endif /* CONFIG_SND_SOC_MAXIM_DSM_CAL */
 
 #define DEBUG_MAX98512
 #ifdef DEBUG_MAX98512
@@ -463,300 +458,12 @@ int max98512_wrapper_update(struct max98512_priv *max98512,
 	return ret;
 }
 
-#ifdef CONFIG_SND_SOC_MAXIM_DSM
-#ifdef USE_DSM_LOG
-static int max98512_get_dump_status(struct snd_kcontrol *kcontrol,
-				    struct snd_ctl_elem_value *ucontrol)
-{
-	ucontrol->value.integer.value[0] = maxdsm_get_dump_status();
-	return 0;
-}
-
-static int max98512_set_dump_status(struct snd_kcontrol *kcontrol,
-				    struct snd_ctl_elem_value *ucontrol)
-{
-	struct snd_soc_codec *codec = snd_soc_kcontrol_codec(kcontrol);
-	struct max98512_priv *max98512 = snd_soc_codec_get_drvdata(codec);
-
-	int val = 0;
-
-	max98512_wrapper_read(max98512, MAX98512L,
-			      MAX98512_R0400_GLOBAL_SHDN, &val);
-	msg_maxim("val: %d", val);
-
-	if (val != 0)
-		maxdsm_update_param();
-
-	return 0;
-}
-
-static ssize_t max98512_log_show(struct device *dev,
-				 struct device_attribute *attr, char *buf)
-{
-	return maxdsm_log_prepare(buf, LOG_LEFT);
-}
-static DEVICE_ATTR(dsm_log, 0444, max98512_log_show, NULL);
-
-static ssize_t max98512_log_r_show(struct device *dev,
-				 struct device_attribute *attr, char *buf)
-{
-	return maxdsm_log_prepare(buf, LOG_RIGHT);
-}
-static DEVICE_ATTR(dsm_log_r, 0444, max98512_log_r_show, NULL);
-
-
-static ssize_t max98512_log_spk_excu_max_show(struct device *dev,
-					      struct device_attribute *attr,
-					      char *buf)
-{
-	struct maxim_dsm_log_max_values values;
-
-	maxdsm_log_max_prepare(&values, LOG_LEFT);
-	maxdsm_log_max_refresh(SPK_EXCURSION_MAX, LOG_LEFT);
-
-	return snprintf(buf, PAGE_SIZE, "%d", values.excursion_max);
-}
-static DEVICE_ATTR(spk_excu_max, 0444,
-		   max98512_log_spk_excu_max_show, NULL);
-
-static ssize_t max98512_log_spk_excu_max_r_show(struct device *dev,
-					      struct device_attribute *attr,
-					      char *buf)
-{
-	struct maxim_dsm_log_max_values values;
-
-	maxdsm_log_max_prepare(&values, LOG_RIGHT);
-	maxdsm_log_max_refresh(SPK_EXCURSION_MAX, LOG_RIGHT);
-
-	return snprintf(buf, PAGE_SIZE, "%d", values.excursion_max);
-}
-static DEVICE_ATTR(spk_excu_max_r, 0444,
-		   max98512_log_spk_excu_max_r_show, NULL);
-
-static ssize_t max98512_log_spk_excu_maxtime_show(struct device *dev,
-						  struct device_attribute *attr,
-						  char *buf)
-{
-	struct maxim_dsm_log_max_values values;
-
-	maxdsm_log_max_prepare(&values, LOG_LEFT);
-
-	return snprintf(buf, PAGE_SIZE, "%s", values.dsm_timestamp);
-}
-static DEVICE_ATTR(spk_excu_maxtime, 0444,
-		   max98512_log_spk_excu_maxtime_show, NULL);
-
-static ssize_t max98512_log_spk_excu_maxtime_r_show(struct device *dev,
-						  struct device_attribute *attr,
-						  char *buf)
-{
-	struct maxim_dsm_log_max_values values;
-
-	maxdsm_log_max_prepare(&values, LOG_RIGHT);
-
-	return snprintf(buf, PAGE_SIZE, "%s", values.dsm_timestamp);
-}
-static DEVICE_ATTR(spk_excu_maxtime_r, 0444,
-		   max98512_log_spk_excu_maxtime_r_show, NULL);
-
-static ssize_t max98512_log_spk_excu_overcnt_show(struct device *dev,
-						  struct device_attribute *attr,
-						  char *buf)
-{
-	struct maxim_dsm_log_max_values values;
-
-	maxdsm_log_max_prepare(&values, LOG_LEFT);
-	maxdsm_log_max_refresh(SPK_EXCURSION_OVERCNT, LOG_LEFT);
-
-	return snprintf(buf, PAGE_SIZE, "%d", values.excursion_overcnt);
-}
-static DEVICE_ATTR(spk_excu_overcnt, 0444,
-		   max98512_log_spk_excu_overcnt_show, NULL);
-
-static ssize_t max98512_log_spk_excu_overcnt_r_show(struct device *dev,
-						  struct device_attribute *attr,
-						  char *buf)
-{
-	struct maxim_dsm_log_max_values values;
-
-	maxdsm_log_max_prepare(&values, LOG_RIGHT);
-	maxdsm_log_max_refresh(SPK_EXCURSION_OVERCNT, LOG_RIGHT);
-
-	return snprintf(buf, PAGE_SIZE, "%d", values.excursion_overcnt);
-}
-static DEVICE_ATTR(spk_excu_overcnt_r, 0444,
-		   max98512_log_spk_excu_overcnt_r_show, NULL);
-
-static ssize_t max98512_log_spk_temp_max_show(struct device *dev,
-					      struct device_attribute *attr,
-					      char *buf)
-{
-	struct maxim_dsm_log_max_values values;
-
-	maxdsm_log_max_prepare(&values, LOG_LEFT);
-	maxdsm_log_max_refresh(SPK_TEMP_MAX, LOG_LEFT);
-
-	return snprintf(buf, PAGE_SIZE, "%d", values.coil_temp_max);
-}
-static DEVICE_ATTR(spk_temp_max, 0444,
-		   max98512_log_spk_temp_max_show, NULL);
-
-static ssize_t max98512_log_spk_temp_max_r_show(struct device *dev,
-					      struct device_attribute *attr,
-					      char *buf)
-{
-	struct maxim_dsm_log_max_values values;
-
-	maxdsm_log_max_prepare(&values, LOG_RIGHT);
-	maxdsm_log_max_refresh(SPK_TEMP_MAX, LOG_RIGHT);
-
-	return snprintf(buf, PAGE_SIZE, "%d", values.coil_temp_max);
-}
-static DEVICE_ATTR(spk_temp_max_r, 0444,
-		   max98512_log_spk_temp_max_r_show, NULL);
-
-static ssize_t max98512_log_spk_temp_max_keep_show(struct device *dev,
-						   struct device_attribute *attr,
-						   char *buf)
-{
-	msg_maxim("val: %d", coil_temp_max_keep);
-
-	return snprintf(buf, PAGE_SIZE, "%d", coil_temp_max_keep);
-}
-static DEVICE_ATTR(spk_temp_max_keep, 0444,
-		   max98512_log_spk_temp_max_keep_show, NULL);
-
-static ssize_t max98512_log_spk_temp_max_keep_r_show(struct device *dev,
-						     struct device_attribute *attr,
-						     char *buf)
-{
-
-	msg_maxim("val: %d", coil_temp_max_keep_r);
-
-	return snprintf(buf, PAGE_SIZE, "%d", coil_temp_max_keep_r);
-}
-static DEVICE_ATTR(spk_temp_max_keep_r, 0444,
-		   max98512_log_spk_temp_max_keep_r_show, NULL);
-
-static ssize_t max98512_log_spk_temp_maxtime_show(struct device *dev,
-						  struct device_attribute *attr,
-						  char *buf)
-{
-	struct maxim_dsm_log_max_values values;
-
-	maxdsm_log_max_prepare(&values, LOG_LEFT);
-
-	return snprintf(buf, PAGE_SIZE, "%s", values.dsm_timestamp);
-}
-static DEVICE_ATTR(spk_temp_maxtime, 0444,
-		   max98512_log_spk_temp_maxtime_show, NULL);
-
-static ssize_t max98512_log_spk_temp_maxtime_r_show(struct device *dev,
-						  struct device_attribute *attr,
-						  char *buf)
-{
-	struct maxim_dsm_log_max_values values;
-
-	maxdsm_log_max_prepare(&values, LOG_RIGHT);
-
-	return snprintf(buf, PAGE_SIZE, "%s", values.dsm_timestamp);
-}
-static DEVICE_ATTR(spk_temp_maxtime_r, 0444,
-		   max98512_log_spk_temp_maxtime_r_show, NULL);
-
-static ssize_t max98512_log_spk_temp_overcnt_show(struct device *dev,
-						  struct device_attribute *attr,
-						  char *buf)
-{
-	struct maxim_dsm_log_max_values values;
-
-	maxdsm_log_max_prepare(&values, LOG_LEFT);
-	maxdsm_log_max_refresh(SPK_TEMP_OVERCNT, LOG_LEFT);
-
-	return snprintf(buf, PAGE_SIZE, "%d", values.coil_temp_overcnt);
-}
-static DEVICE_ATTR(spk_temp_overcnt, 0444,
-		   max98512_log_spk_temp_overcnt_show, NULL);
-
-static ssize_t max98512_log_spk_temp_overcnt_r_show(struct device *dev,
-						  struct device_attribute *attr,
-						  char *buf)
-{
-	struct maxim_dsm_log_max_values values;
-
-	maxdsm_log_max_prepare(&values, LOG_RIGHT);
-	maxdsm_log_max_refresh(SPK_TEMP_OVERCNT, LOG_RIGHT);
-
-	return snprintf(buf, PAGE_SIZE, "%d", values.coil_temp_overcnt);
-}
-static DEVICE_ATTR(spk_temp_overcnt_r, 0444,
-		   max98512_log_spk_temp_overcnt_r_show, NULL);
-
-#endif /* USE_DSM_LOG */
-
-#ifdef USE_DSM_UPDATE_CAL
-static int max98512_get_dsm_param(struct snd_kcontrol *kcontrol,
-				  struct snd_ctl_elem_value *ucontrol)
-{
-	ucontrol->value.integer.value[0] = maxdsm_cal_avail();
-	return 0;
-}
-
-static int max98512_set_dsm_param(struct snd_kcontrol *kcontrol,
-				  struct snd_ctl_elem_value *ucontrol)
-{
-	maxdsm_update_caldata(ucontrol->value.integer.value[0]);
-	return 0;
-}
-
-static ssize_t max98512_cal_show(struct device *dev,
-				 struct device_attribute *attr, char *buf)
-{
-	return maxdsm_cal_prepare(buf);
-}
-static DEVICE_ATTR(dsm_cal, 0444, max98512_cal_show, NULL);
-#endif /* USE_DSM_UPDATE_CAL */
-
-#if defined(USE_DSM_LOG) || defined(USE_DSM_UPDATE_CAL)
-#define DEFAULT_LOG_CLASS_NAME "dsm"
-static const char *class_name_log = DEFAULT_LOG_CLASS_NAME;
-
-static struct attribute *max98512_attributes[] = {
-#ifdef USE_DSM_LOG
-	&dev_attr_dsm_log.attr,
-	&dev_attr_dsm_log_r.attr,
-	&dev_attr_spk_excu_max.attr,
-	&dev_attr_spk_excu_max_r.attr,
-	&dev_attr_spk_excu_maxtime.attr,
-	&dev_attr_spk_excu_maxtime_r.attr,
-	&dev_attr_spk_excu_overcnt.attr,
-	&dev_attr_spk_excu_overcnt_r.attr,
-	&dev_attr_spk_temp_max.attr,
-	&dev_attr_spk_temp_max_r.attr,
-	&dev_attr_spk_temp_max_keep.attr,
-	&dev_attr_spk_temp_max_keep_r.attr,
-	&dev_attr_spk_temp_maxtime.attr,
-	&dev_attr_spk_temp_maxtime_r.attr,
-	&dev_attr_spk_temp_overcnt.attr,
-	&dev_attr_spk_temp_overcnt_r.attr,
-#endif /* USE_DSM_LOG */
-#ifdef USE_DSM_UPDATE_CAL
-	&dev_attr_dsm_cal.attr,
-#endif /* USE_DSM_UPDATE_CAL */
-	NULL
-};
-
-static struct attribute_group max98512_attribute_group = {
-	.attrs = max98512_attributes
-};
-#endif /* USE_DSM_LOG || USE_DSM_UPDATE_CAL */
-#endif /* CONFIG_SND_SOC_MAXIM_DSM */
-
 static int max98512_dai_set_fmt(struct snd_soc_dai *codec_dai,
 				unsigned int fmt)
 {
-	struct snd_soc_codec *codec = codec_dai->codec;
-	struct max98512_priv *max98512 = snd_soc_codec_get_drvdata(codec);
+	// Change by Adil
+	struct snd_soc_component *component = codec_dai->component;
+	struct max98512_priv *max98512 = snd_soc_component_get_drvdata(component);
 	unsigned int mode = 0;
 	unsigned int pcm_fmt = 0;
 	bool pdm_fmt = false;
@@ -773,7 +480,7 @@ static int max98512_dai_set_fmt(struct snd_soc_dai *codec_dai,
 		mode = MAX98512_PCM_MASTER_MODE_MASTER;
 		break;
 	default:
-		dev_err(codec->dev, "DAI clock mode unsupported");
+		dev_err(component->dev, "DAI clock mode unsupported");
 		return -EINVAL;
 	}
 
@@ -789,7 +496,7 @@ static int max98512_dai_set_fmt(struct snd_soc_dai *codec_dai,
 		invert = MAX98512_PCM_MODE_CFG_PCM_BCLKEDGE;
 		break;
 	default:
-		dev_err(codec->dev, "DAI invert mode unsupported");
+		dev_err(component->dev, "DAI invert mode unsupported");
 		return -EINVAL;
 	}
 
@@ -879,7 +586,7 @@ static const int rate_table[] = {
 static int max98512_set_clock(struct max98512_priv *max98512,
 			      struct snd_pcm_hw_params *params)
 {
-	struct snd_soc_codec *codec = max98512->codec;
+	struct snd_soc_component *component = max98512->component;
 	/* BCLK/LRCLK ratio calculation */
 	int blr_clk_ratio = params_channels(params) * max98512->ch_size;
 	int value;
@@ -892,7 +599,7 @@ static int max98512_set_clock(struct max98512_priv *max98512,
 				break;
 		}
 		if (i == ARRAY_SIZE(rate_table)) {
-			dev_err(codec->dev,
+			dev_err(component->dev,
 				"failed to find proper clock rate.\n");
 			return -EINVAL;
 		}
@@ -926,8 +633,8 @@ static int max98512_dai_hw_params(struct snd_pcm_substream *substream,
 				  struct snd_pcm_hw_params *params,
 				  struct snd_soc_dai *dai)
 {
-	struct snd_soc_codec *codec = dai->codec;
-	struct max98512_priv *max98512 = snd_soc_codec_get_drvdata(codec);
+	struct snd_soc_component *component = dai->component;
+	struct max98512_priv *max98512 = snd_soc_component_get_drvdata(component);
 	unsigned int sampling_rate = 0;
 	unsigned int chan_sz = 0;
 
@@ -943,7 +650,7 @@ static int max98512_dai_hw_params(struct snd_pcm_substream *substream,
 		chan_sz = MAX98512_PCM_MODE_CFG_CHANSZ_32;
 		break;
 	default:
-		dev_err(codec->dev, "format unsupported %d",
+		dev_err(component->dev, "format unsupported %d",
 			params_format(params));
 		goto err;
 	}
@@ -1000,7 +707,7 @@ static int max98512_dai_hw_params(struct snd_pcm_substream *substream,
 		sampling_rate = MAX98512_PCM_SR_SET1_SR_192000;
 		break;
 	default:
-		dev_err(codec->dev, "rate %d not supported\n",
+		dev_err(component->dev, "rate %d not supported\n",
 			params_rate(params));
 		goto err;
 	}
@@ -1083,8 +790,8 @@ EXPORT_SYMBOL_GPL(max98512_boost_bypass);
 static int max98512_dai_set_sysclk(struct snd_soc_dai *dai, int clk_id,
 				   unsigned int freq, int dir)
 {
-	struct snd_soc_codec *codec = dai->codec;
-	struct max98512_priv *max98512 = snd_soc_codec_get_drvdata(codec);
+	struct snd_soc_component *component = dai->component;
+	struct max98512_priv *max98512 = snd_soc_component_get_drvdata(component);
 
 	msg_maxim("clk_id %d, freq %d, dir %d", clk_id, freq, dir);
 	max98512->sysclk = freq;
@@ -1325,7 +1032,7 @@ static int __max98512_spk_enable(struct max98512_priv *max98512)
 				MAX98512_MEAS_VI_EN,
 				vimon);
 
-	battery_temp = maxdsm_cal_get_temp_from_power_supply();
+	battery_temp = 0;//maxdsm_cal_get_temp_from_power_supply();
 
 	if (battery_temp > 50) {
 		msg_maxim("battery_temp[%d] over 50", battery_temp);
@@ -1424,14 +1131,6 @@ static void max98512_spk_enable(struct max98512_priv *max98512, int enable)
 					0);
 		usleep_range(15000, 16000);
 	}
-
-#ifdef CONFIG_SND_SOC_MAXIM_DSM
-	maxdsm_set_spk_state(enable, max98512->pdata->osm);
-
-	if (enable)
-		maxdsm_set_stereo_mode_configuration(max98512->pdata->osm);
-
-#endif /* CONFIG_SND_SOC_MAXIM_DSM */
 }
 
 static void max98512_spk_enable_l(struct max98512_priv *max98512, int enable)
@@ -1454,57 +1153,13 @@ static void max98512_spk_enable_l(struct max98512_priv *max98512, int enable)
 static int max98512_dai_mute_stream(struct snd_soc_dai *dai,
 				    int mute, int stream)
 {
-	struct max98512_priv *max98512 = snd_soc_codec_get_drvdata(dai->codec);
-#ifdef CONFIG_SND_SOC_MAXIM_DSM
-	struct max98512_pdata *pdata = max98512->pdata;
-	int rdc = 0, rdc_r = 0, temp = 0;
-	int ret = 0;
-
-#ifdef USE_DSM_LOG
-	if ((stream == SNDRV_PCM_STREAM_PLAYBACK) && mute)
-		/* get logging parameters */
-		maxdsm_update_param();
-#endif
-#endif
+	struct max98512_priv *max98512 = snd_soc_component_get_drvdata(dai->component);
 
 	if (stream == SNDRV_PCM_STREAM_PLAYBACK) {
 		msg_maxim("max98512_spk_enable mute = %d", mute);
 		max98512_spk_enable(max98512, mute != 0 ? 0 : 1);
 	}
 
-#ifdef CONFIG_SND_SOC_MAXIM_DSM
-	if ((!pdata->nodsm) && (stream == SNDRV_PCM_STREAM_CAPTURE)
-		&& (mute == 0)) {
-
-		msg_maxim("set maxdsm calibration");
-
-		ret = maxdsm_cal_get_rdc(&rdc);
-		if (ret || rdc <= 0) {
-			pr_info("%s: rdc(0x%08x)\n", __func__, rdc);
-			goto exit;
-		}
-
-		ret = maxdsm_cal_get_temp(&temp);
-		if (ret || temp <= 0) {
-			pr_info("%s: temp(%d)\n", __func__, temp);
-			goto exit;
-		}
-
-		/* left channel */
-		ret = maxdsm_set_rdc_temp_ch(rdc, (int)(temp / 10), 0);
-
-		if (max98512->mono_stereo) {
-			ret = maxdsm_cal_get_rdc_r(&rdc_r);
-			if (ret < 0 || rdc_r <= 0) {
-				pr_err("%s: Failed to set calibration ret = (%d) rdc_r(0x%08x)\n",
-					__func__, ret, rdc_r);
-				goto exit;
-			}
-			maxdsm_set_rdc_temp_ch(rdc_r, (int)(temp / 10), 1);
-		}
-	}
-exit:
-#endif
 	return 0;
 }
 
@@ -1596,8 +1251,8 @@ static int max98512_get_pdm_l_zero(struct snd_kcontrol *kcontrol,
 static int max98512_put_pdm_l_zero(struct snd_kcontrol *kcontrol,
 				   struct snd_ctl_elem_value *ucontrol)
 {
-	struct snd_soc_codec *codec = snd_soc_kcontrol_codec(kcontrol);
-	struct max98512_priv *max98512 = snd_soc_codec_get_drvdata(codec);
+	struct snd_soc_component *component = snd_soc_kcontrol_component(kcontrol);
+	struct max98512_priv *max98512 = snd_soc_component_get_drvdata(component);
 	int ret;
 
 	pdm_l_zero = ucontrol->value.integer.value[0];
@@ -1619,8 +1274,8 @@ static int max98512_get_pdm_l_one(struct snd_kcontrol *kcontrol,
 static int max98512_put_pdm_l_one(struct snd_kcontrol *kcontrol,
 				  struct snd_ctl_elem_value *ucontrol)
 {
-	struct snd_soc_codec *codec = snd_soc_kcontrol_codec(kcontrol);
-	struct max98512_priv *max98512 = snd_soc_codec_get_drvdata(codec);
+	struct snd_soc_component *component = snd_soc_kcontrol_component(kcontrol);
+	struct max98512_priv *max98512 = snd_soc_component_get_drvdata(component);
 	int ret;
 
 	pdm_l_one = ucontrol->value.integer.value[0];
@@ -1634,8 +1289,8 @@ static int max98512_put_pdm_l_one(struct snd_kcontrol *kcontrol,
 static int max98512_get_amp_l_status(struct snd_kcontrol *kcontrol,
 				    struct snd_ctl_elem_value *ucontrol)
 {
-	struct snd_soc_codec *codec = snd_soc_kcontrol_codec(kcontrol);
-	struct max98512_priv *max98512 = snd_soc_codec_get_drvdata(codec);
+	struct snd_soc_component *component = snd_soc_kcontrol_component(kcontrol);
+	struct max98512_priv *max98512 = snd_soc_component_get_drvdata(component);
 	int val = 0;
 
 	max98512_wrapper_read(max98512, MAX98512L,
@@ -1647,8 +1302,8 @@ static int max98512_get_amp_l_status(struct snd_kcontrol *kcontrol,
 static int max98512_set_amp_l_status(struct snd_kcontrol *kcontrol,
 				    struct snd_ctl_elem_value *ucontrol)
 {
-	struct snd_soc_codec *codec = snd_soc_kcontrol_codec(kcontrol);
-	struct max98512_priv *max98512 = snd_soc_codec_get_drvdata(codec);
+	struct snd_soc_component *component = snd_soc_kcontrol_component(kcontrol);
+	struct max98512_priv *max98512 = snd_soc_component_get_drvdata(component);
 
 	max98512_spk_enable_l(max98512, ucontrol->value.integer.value[0]);
 	return 0;
@@ -1657,14 +1312,14 @@ static int max98512_set_amp_l_status(struct snd_kcontrol *kcontrol,
 static int max98512_get_thermal_min_gain_status(struct snd_kcontrol *kcontrol,
 				    struct snd_ctl_elem_value *ucontrol)
 {
-	ucontrol->value.integer.value[0] = maxdsm_get_thermal_min_gain();
+	ucontrol->value.integer.value[0] = 0;
 	return 0;
 }
 
 static int max98512_set_thermal_min_gain_status(struct snd_kcontrol *kcontrol,
 				    struct snd_ctl_elem_value *ucontrol)
 {
-	maxdsm_set_thermal_min_gain(ucontrol->value.integer.value[0]);
+	ucontrol->value.integer.value[0]=0;
 
 	return 0;
 }
@@ -1801,8 +1456,8 @@ static SOC_ENUM_SINGLE_DECL(max98512b_current_limit,
 static int max98512_pdm_gain_get(struct snd_kcontrol *kcontrol,
 				 struct snd_ctl_elem_value *ucontrol)
 {
-	struct snd_soc_codec *codec = snd_soc_kcontrol_codec(kcontrol);
-	struct max98512_priv *max98512 = snd_soc_codec_get_drvdata(codec);
+	struct snd_soc_component *component = snd_soc_kcontrol_component(kcontrol);
+	struct max98512_priv *max98512 = snd_soc_component_get_drvdata(component);
 
 	ucontrol->value.integer.value[0] = max98512->pdm_gain;
 	msg_maxim("pdm_gain setting returned %d",
@@ -1814,8 +1469,8 @@ static int max98512_pdm_gain_get(struct snd_kcontrol *kcontrol,
 static int max98512_pdm_gain_put(struct snd_kcontrol *kcontrol,
 				 struct snd_ctl_elem_value *ucontrol)
 {
-	struct snd_soc_codec *codec = snd_soc_kcontrol_codec(kcontrol);
-	struct max98512_priv *max98512 = snd_soc_codec_get_drvdata(codec);
+	struct snd_soc_component *component = snd_soc_kcontrol_component(kcontrol);
+	struct max98512_priv *max98512 = snd_soc_component_get_drvdata(component);
 	unsigned int sel = ucontrol->value.integer.value[0];
 
 	if (sel < ((1 << MAX98512_PDM_GAIN_WIDTH) - 1)) {
@@ -1832,8 +1487,8 @@ static int max98512_pdm_gain_put(struct snd_kcontrol *kcontrol,
 static int max98512_rcv_digital_gain_get(struct snd_kcontrol *kcontrol,
 				 struct snd_ctl_elem_value *ucontrol)
 {
-	struct snd_soc_codec *codec = snd_soc_kcontrol_codec(kcontrol);
-	struct max98512_priv *max98512 = snd_soc_codec_get_drvdata(codec);
+	struct snd_soc_component *component = snd_soc_kcontrol_component(kcontrol);
+	struct max98512_priv *max98512 = snd_soc_component_get_drvdata(component);
 
 	ucontrol->value.integer.value[0] = max98512->digital_gain_rcv;
 	msg_maxim("digital_gain_rcv setting returned %d",
@@ -1845,8 +1500,8 @@ static int max98512_rcv_digital_gain_get(struct snd_kcontrol *kcontrol,
 static int max98512_rcv_digital_gain_put(struct snd_kcontrol *kcontrol,
 				 struct snd_ctl_elem_value *ucontrol)
 {
-	struct snd_soc_codec *codec = snd_soc_kcontrol_codec(kcontrol);
-	struct max98512_priv *max98512 = snd_soc_codec_get_drvdata(codec);
+	struct snd_soc_component *component = snd_soc_kcontrol_component(kcontrol);
+	struct max98512_priv *max98512 = snd_soc_component_get_drvdata(component);
 	unsigned int sel = ucontrol->value.integer.value[0];
 
 	if (sel < (1 << MAX98512_AMP_VOL_WIDTH) - 1) {
@@ -1864,8 +1519,8 @@ static int max98512_rcv_digital_gain_put(struct snd_kcontrol *kcontrol,
 static int max98512_analog_gain_l_get(struct snd_kcontrol *kcontrol,
 				 struct snd_ctl_elem_value *ucontrol)
 {
-	struct snd_soc_codec *codec = snd_soc_kcontrol_codec(kcontrol);
-	struct max98512_priv *max98512 = snd_soc_codec_get_drvdata(codec);
+	struct snd_soc_component *component = snd_soc_kcontrol_component(kcontrol);
+	struct max98512_priv *max98512 = snd_soc_component_get_drvdata(component);
 
 	ucontrol->value.integer.value[0] = max98512->spk_gain_left;
 	msg_maxim("spk_gain_left for left analog  setting returned %d",
@@ -1877,8 +1532,8 @@ static int max98512_analog_gain_l_get(struct snd_kcontrol *kcontrol,
 static int max98512_analog_gain_l_put(struct snd_kcontrol *kcontrol,
 				 struct snd_ctl_elem_value *ucontrol)
 {
-	struct snd_soc_codec *codec = snd_soc_kcontrol_codec(kcontrol);
-	struct max98512_priv *max98512 = snd_soc_codec_get_drvdata(codec);
+	struct snd_soc_component *component = snd_soc_kcontrol_component(kcontrol);
+	struct max98512_priv *max98512 = snd_soc_component_get_drvdata(component);
 	int sel = (int)ucontrol->value.integer.value[0];
 
 	msg_maxim("set spk_gain_left [%d] for left channel", sel);
@@ -1898,8 +1553,8 @@ static int max98512_analog_gain_l_put(struct snd_kcontrol *kcontrol,
 static int max98512_analog_gain_r_get(struct snd_kcontrol *kcontrol,
 				 struct snd_ctl_elem_value *ucontrol)
 {
-	struct snd_soc_codec *codec = snd_soc_kcontrol_codec(kcontrol);
-	struct max98512_priv *max98512 = snd_soc_codec_get_drvdata(codec);
+	struct snd_soc_component *component = snd_soc_kcontrol_component(kcontrol);
+	struct max98512_priv *max98512 = snd_soc_component_get_drvdata(component);
 
 	ucontrol->value.integer.value[0] = max98512->spk_gain_right;
 	msg_maxim("spk_gain_right for right analog  setting returned %d",
@@ -1911,8 +1566,8 @@ static int max98512_analog_gain_r_get(struct snd_kcontrol *kcontrol,
 static int max98512_analog_gain_r_put(struct snd_kcontrol *kcontrol,
 				 struct snd_ctl_elem_value *ucontrol)
 {
-	struct snd_soc_codec *codec = snd_soc_kcontrol_codec(kcontrol);
-	struct max98512_priv *max98512 = snd_soc_codec_get_drvdata(codec);
+	struct snd_soc_component *component = snd_soc_kcontrol_component(kcontrol);
+	struct max98512_priv *max98512 = snd_soc_component_get_drvdata(component);
 	int sel = (int)ucontrol->value.integer.value[0];
 
 	msg_maxim("set spk_gain_right [%d] for right channel", sel);
@@ -1932,8 +1587,8 @@ static int max98512_analog_gain_r_put(struct snd_kcontrol *kcontrol,
 static int max98512_one_stop_mode_get(struct snd_kcontrol *kcontrol,
 				      struct snd_ctl_elem_value *ucontrol)
 {
-	struct snd_soc_codec *codec = snd_soc_kcontrol_codec(kcontrol);
-	struct max98512_priv *max98512 = snd_soc_codec_get_drvdata(codec);
+	struct snd_soc_component *component = snd_soc_kcontrol_component(kcontrol);
+	struct max98512_priv *max98512 = snd_soc_component_get_drvdata(component);
 	struct max98512_pdata *pdata = max98512->pdata;
 
 	ucontrol->value.integer.value[0] = pdata->osm;
@@ -1944,8 +1599,8 @@ static int max98512_one_stop_mode_get(struct snd_kcontrol *kcontrol,
 static int max98512_one_stop_mode_put(struct snd_kcontrol *kcontrol,
 				      struct snd_ctl_elem_value *ucontrol)
 {
-	struct snd_soc_codec *codec = snd_soc_kcontrol_codec(kcontrol);
-	struct max98512_priv *max98512 = snd_soc_codec_get_drvdata(codec);
+	struct snd_soc_component *component = snd_soc_kcontrol_component(kcontrol);
+	struct max98512_priv *max98512 = snd_soc_component_get_drvdata(component);
 	struct max98512_pdata *pdata = max98512->pdata;
 	int osm = (int)ucontrol->value.integer.value[0];
 	int state = 0;
@@ -1953,7 +1608,7 @@ static int max98512_one_stop_mode_put(struct snd_kcontrol *kcontrol,
 	osm = osm < 0 ? 0 : osm;
 	if (osm < MAX98512_OSM_MAX && pdata->osm != osm) {
 		pdata->osm = osm;
-		state = maxdsm_get_spk_state();
+		state = 1;//maxdsm_get_spk_state();
 		if (state)
 			max98512_spk_enable(max98512, state);
 	}
@@ -1966,8 +1621,8 @@ static int max98512_one_stop_mode_put(struct snd_kcontrol *kcontrol,
 static int max98512_boost_mode_get(struct snd_kcontrol *kcontrol,
 				      struct snd_ctl_elem_value *ucontrol)
 {
-	struct snd_soc_codec *codec = snd_soc_kcontrol_codec(kcontrol);
-	struct max98512_priv *max98512 = snd_soc_codec_get_drvdata(codec);
+	struct snd_soc_component *component = snd_soc_kcontrol_component(kcontrol);
+	struct max98512_priv *max98512 = snd_soc_component_get_drvdata(component);
 	struct max98512_pdata *pdata = max98512->pdata;
 
 	ucontrol->value.integer.value[0] = pdata->boost_mode;
@@ -1978,8 +1633,8 @@ static int max98512_boost_mode_get(struct snd_kcontrol *kcontrol,
 static int max98512_boost_mode_put(struct snd_kcontrol *kcontrol,
 				      struct snd_ctl_elem_value *ucontrol)
 {
-	struct snd_soc_codec *codec = snd_soc_kcontrol_codec(kcontrol);
-	struct max98512_priv *max98512 = snd_soc_codec_get_drvdata(codec);
+	struct snd_soc_component *component = snd_soc_kcontrol_component(kcontrol);
+	struct max98512_priv *max98512 = snd_soc_component_get_drvdata(component);
 	struct max98512_pdata *pdata = max98512->pdata;
 	int boost_mode = (int)ucontrol->value.integer.value[0];
 
@@ -2061,14 +1716,6 @@ static const struct snd_kcontrol_new max98512_snd_controls[] = {
 		       max98512_get_amp_l_status, max98512_set_amp_l_status),
 	SOC_SINGLE_EXT("Safety mode", SND_SOC_NOPM, 0, 1, 0,
 		       max98512_get_thermal_min_gain_status, max98512_set_thermal_min_gain_status),
-#ifdef USE_DSM_LOG
-	SOC_SINGLE_EXT("DSM LOG", SND_SOC_NOPM, 0, 3, 0,
-		       max98512_get_dump_status, max98512_set_dump_status),
-#endif /* USE_DSM_LOG */
-#ifdef USE_DSM_UPDATE_CAL
-	SOC_SINGLE_EXT("DSM SetParam", SND_SOC_NOPM, 0, 1, 0,
-		       max98512_get_dsm_param, max98512_set_dsm_param),
-#endif /* USE_DSM_UPDATE_CAL */
 };
 
 static const struct snd_kcontrol_new max98512b_snd_controls[] = {
@@ -2117,14 +1764,6 @@ static const struct snd_kcontrol_new max98512b_snd_controls[] = {
 		       max98512_get_amp_l_status, max98512_set_amp_l_status),
 	SOC_SINGLE_EXT("Safety mode", SND_SOC_NOPM, 0, 1, 0,
 		       max98512_get_thermal_min_gain_status, max98512_set_thermal_min_gain_status),
-#ifdef USE_DSM_LOG
-	SOC_SINGLE_EXT("DSM LOG", SND_SOC_NOPM, 0, 3, 0,
-		       max98512_get_dump_status, max98512_set_dump_status),
-#endif /* USE_DSM_LOG */
-#ifdef USE_DSM_UPDATE_CAL
-	SOC_SINGLE_EXT("DSM SetParam", SND_SOC_NOPM, 0, 1, 0,
-		       max98512_get_dsm_param, max98512_set_dsm_param),
-#endif /* USE_DSM_UPDATE_CAL */
 };
 
 static struct snd_soc_dai_driver max98512_dai[] = {
@@ -2148,23 +1787,23 @@ static struct snd_soc_dai_driver max98512_dai[] = {
 	}
 };
 
-static int max98512_probe(struct snd_soc_codec *codec)
+static int max98512_probe(struct snd_soc_component *component)
 {
-	struct max98512_priv *max98512 = snd_soc_codec_get_drvdata(codec);
+	struct max98512_priv *max98512 = snd_soc_component_get_drvdata(component);
 	struct max98512_pdata *pdata = max98512->pdata;
 	struct max98512_volume_step_info *vstep = &max98512->vstep;
 	int ret = 0;
 	unsigned int vimon = pdata->nodsm ? 0 : MAX98512_MEAS_VI_EN;
 
-	max98512->codec = codec;
-	codec->control_data = max98512->regmap_l;
-	codec->cache_bypass = 1;
+	max98512->component = component;
+	//component->control_data = max98512->regmap_l;
+	//component->cache_bypass = 1;
 
 	if (max98512->revID == ID_MAX98512_REV)
-		ret = snd_soc_add_codec_controls(codec, max98512_snd_controls,
+		ret = snd_soc_add_component_controls(component, max98512_snd_controls,
 					 ARRAY_SIZE(max98512_snd_controls));
 	else
-		ret = snd_soc_add_codec_controls(codec, max98512b_snd_controls,
+		ret = snd_soc_add_component_controls(component, max98512b_snd_controls,
 					 ARRAY_SIZE(max98512b_snd_controls));
 
 	if (ret < 0) {
@@ -2409,35 +2048,12 @@ static int max98512_probe(struct snd_soc_codec *codec)
 				       0x00);
 	}
 
-#if defined(USE_DSM_LOG) || defined(USE_DSM_UPDATE_CAL)
-	if (!g_class)
-		g_class = class_create(THIS_MODULE, class_name_log);
-	max98512->class = g_class;
-	if (max98512->class) {
-		max98512->dev = device_create(max98512->class,
-					      NULL, 1, NULL, "max98512");
-		if (IS_ERR(max98512->dev)) {
-			ret = sysfs_create_group(&codec->dev->kobj,
-						 &max98512_attribute_group);
-			if (ret)
-				msg_maxim("failed to create sysfs group [%d]",
-					  ret);
-		} else {
-			ret = sysfs_create_group(&max98512->dev->kobj,
-						 &max98512_attribute_group);
-			if (ret)
-				msg_maxim("failed to create sysfs group [%d]",
-					  ret);
-		}
-	}
-#endif /* USE_DSM_LOG */
-
 	msg_maxim("End");
 
 	return 0;
 }
 
-static const struct snd_soc_codec_driver soc_codec_dev_max98512 = {
+static const struct snd_soc_component_driver soc_component_dev_max98512 = {
 	.probe = max98512_probe,
 };
 
@@ -2660,15 +2276,6 @@ static int max98512_i2c_probe(struct i2c_client *i2c,
 			dev_info(&i2c->dev,
 				 "set sub-device address %#x", pdata->sub_reg);
 
-#ifdef USE_DSM_LOG
-		if (of_property_read_string(i2c->dev.of_node,
-					    "maxim,log_class",
-					    &class_name_log)) {
-			dev_warn(&i2c->dev,
-				 "There is no log_class property.\n");
-			class_name_log = DEFAULT_LOG_CLASS_NAME;
-		}
-#endif
 		if (of_property_read_u32_array(i2c->dev.of_node,
 			       "maxim,ppr_param_info",
 			       (u32 *)&pdata->ppr_info,
@@ -2819,18 +2426,9 @@ static int max98512_i2c_probe(struct i2c_client *i2c,
 	} else if (max98512->regmap_l && !max98512->mono_stereo)
 		max98512_slot_config(i2c, max98512);
 
-#ifdef CONFIG_SND_SOC_MAXIM_DSM
-	/* If maxdsm module was already registerd, will be ignored. */
-	maxdsm_init();
-	if (pdata->pinfo)
-		maxdsm_update_info(pdata->pinfo);
-	maxdsm_update_sub_reg(pdata->sub_reg);
-	maxdsm_update_ppr_info(pdata->ppr_info);
-#endif
-
 	/* codec registeration */
-	ret = snd_soc_register_codec(&i2c->dev,
-				     &soc_codec_dev_max98512,
+	ret = devm_snd_soc_register_component(&i2c->dev,
+				     &soc_component_dev_max98512,
 				     max98512_dai,
 				     ARRAY_SIZE(max98512_dai));
 	if (ret < 0) {
@@ -2845,9 +2443,6 @@ static int max98512_i2c_probe(struct i2c_client *i2c,
 	return 0;
 
 err_register_codec:
-#ifdef CONFIG_SND_SOC_MAXIM_DSM
-	maxdsm_deinit();
-#endif
 	if (max98512->regmap_l)
 		regmap_exit(max98512->regmap_l);
 	if (max98512->regmap_r)
@@ -2867,10 +2462,7 @@ static int max98512_i2c_remove(struct i2c_client *client)
 	struct max98512_priv *max98512 = i2c_get_clientdata(client);
 	struct max98512_pdata *pdata = max98512->pdata;
 
-#ifdef CONFIG_SND_SOC_MAXIM_DSM
-	maxdsm_deinit();
-#endif
-	snd_soc_unregister_codec(&client->dev);
+	//snd_soc_unregister_codec(&client->dev);
 	if (max98512->regmap_l)
 		regmap_exit(max98512->regmap_l);
 	if (max98512->regmap_r)
